@@ -1,25 +1,18 @@
 import base64
 import os
-import sys
 from pathlib import Path
-
-MAX_BYTES = 1_048_576
-JPEG_MAGIC = b"\xff\xd8\xff"
-PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 
 
 def main():
     here = Path(__file__).resolve().parent
-    data = base64.b64decode((here / "image.b64").read_text().strip())
-    if len(data) > MAX_BYTES:
-        sys.exit(f"image exceeds 1 MiB cap: {len(data)} bytes")
-    if not (data[:3] == JPEG_MAGIC or data[:8] == PNG_MAGIC):
-        sys.exit("image is neither JPEG nor PNG (bad magic bytes)")
-    out_dir = Path(os.environ.get("MAKEFUN_OUTPUT_DIR", "."))
+    image_bytes = base64.b64decode((here / "image.b64").read_text().strip())
+    if image_bytes[:3] != b"\xff\xd8\xff":
+        raise ValueError("entry is not a JPEG (bad magic bytes)")
+    if len(image_bytes) > 1024 * 1024:
+        raise ValueError("entry exceeds the 1 MiB limit")
+    out_dir = Path(os.environ.get("MAKEFUN_OUTPUT_DIR", "/output"))
     out_dir.mkdir(parents=True, exist_ok=True)
-    out = out_dir / "entry.png"
-    out.write_bytes(data)
-    print(f"wrote {out} ({len(data)} bytes)")
+    (out_dir / "entry.png").write_bytes(image_bytes)
 
 
 if __name__ == "__main__":
